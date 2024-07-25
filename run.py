@@ -5,7 +5,9 @@ import pymysql
 import zipfile
 import argparse
 import pandas as pd
-from get_ssc_link import get_ssc_link
+from ssc_link import get_ssc_link
+from archive import zip_files_in_tmp
+from to_xlsx import convert_pickle_to_excel
 
 def read_config(config_path):
     with open(config_path, 'r') as f:
@@ -30,6 +32,7 @@ def connect_to_db(config):
         )
         return connection
     except pymysql.MySQLError as e:
+        print(f"Database connection error: {e}")
         sys.exit(1)
 
 def fetch_data(connection, query):
@@ -58,10 +61,6 @@ def process_data(result, appid, config):
 def save_to_pickle(df, output_path):
     df.to_pickle(output_path)
 
-def zip_excel_file(excel_file_name, zip_file_path):
-    with zipfile.ZipFile(zip_file_path, 'w') as zipf:
-        zipf.write(excel_file_name, os.path.basename(excel_file_name))
-
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-i', '--appid', required=True, help='')
@@ -72,8 +71,25 @@ def main():
     connection = connect_to_db(config)
     result = fetch_data(connection, query)
     df = process_data(result, args.appid, config)
-    save_to_pickle(df, 'output.pkl')
-    zip_excel_file('output.xlsx', '/fortify_ssc/apache-tomcat-9.0.88/webapps/ROOT/reports/report.zip')
+    
+    tmp_dir = '.tmp'
+    os.makedirs(tmp_dir, exist_ok=True)
+    
+    pickle_path = os.path.join(tmp_dir, 'fortify_data.pkl')
+    excel_path = os.path.join(tmp_dir, 'output.xlsx')
+    fpr_path = os.path.join(tmp_dir, 'output.fpr')
+    
+    save_to_pickle(df, pickle_path)
+    convert_pickle_to_excel(pickle_path, excel_path)
+    
+    # Assuming the .fpr file is generated somewhere in the process
+    # For now, let's create an empty .fpr file for demonstration
+    with open(fpr_path, 'w') as f:
+        f.write('')
 
-if __name__ = "__main__":
+    zip_files_in_tmp('/fortify_ssc/apache-tomcat-9.0.88/webapps/ROOT/reports/report.zip')
+
+    shutil.rmtree(tmp_dir)
+
+if __name__ == "__main__":
     main()

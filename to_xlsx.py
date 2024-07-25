@@ -3,14 +3,15 @@ import argparse
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+import os
 
 def convert_pickle_to_excel(pickle_file_path, excel_file_path):
     df = pd.read_pickle(pickle_file_path)
 
     print(f'{json.dumps(df.to_dict(orient="records"), indent=4)}')
     
-workbook = Workbook()
-sheet = workbook.active
+    workbook = Workbook()
+    sheet = workbook.active
 
     for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=True), 1):
         for c_idx, value in enumerate(row, 1):
